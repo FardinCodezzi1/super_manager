@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node init && vite",
+    "build": "node init && vite build",
     "build:zip": "vite build && powershell -Command \"Compress-Archive -Path 'dist\\*' -DestinationPath 'super_manager_build.zip' -Force\"",
     "zip": "powershell -Command \"Compress-Archive -Path 'dist\\*' -DestinationPath 'super_manager_build.zip' -Force\"",
     "lint": "eslint .",
