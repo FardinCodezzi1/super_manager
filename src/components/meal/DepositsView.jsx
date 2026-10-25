@@ -7,7 +7,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { EditDepositModal } from './EditDepositModal';
 
 export function DepositsView({ onOpenAddDeposit }) {
-  const { currentMonthKey, members, isManager, refreshAllMessData } = useMess();
+  const { currentMonthKey, members, isManager, refreshAllMessData, dataVersion, isPastMonth } = useMess();
 
   const [depositsList, setDepositsList] = useState([]);
   const [filterMember, setFilterMember] = useState('all');
@@ -31,7 +31,7 @@ export function DepositsView({ onOpenAddDeposit }) {
 
   useEffect(() => {
     fetchDeposits();
-  }, [fetchDeposits]);
+  }, [fetchDeposits, dataVersion]);
 
   const totalCollected = useMemo(() => {
     return depositsList.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
@@ -87,8 +87,14 @@ export function DepositsView({ onOpenAddDeposit }) {
           {isManager && (
             <button
               type="button"
-              onClick={onOpenAddDeposit}
-              className="tap-active px-2.5 py-1.5 theme-btn-primary sharp-xs text-xs font-semibold flex items-center gap-1 shadow-xs transition whitespace-nowrap"
+              disabled={isPastMonth}
+              onClick={isPastMonth ? undefined : onOpenAddDeposit}
+              className={`px-2.5 py-1.5 sharp-xs text-xs font-semibold flex items-center gap-1 shadow-xs transition whitespace-nowrap ${
+                isPastMonth
+                  ? 'opacity-40 cursor-not-allowed surface-subtle text-DynamicMuted border border-slate-700/30'
+                  : 'tap-active theme-btn-primary'
+              }`}
+              title={isPastMonth ? 'Disabled: cannot add deposits for a past archived month' : 'Add Deposit'}
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Deposit</span>

@@ -5,7 +5,7 @@ import { showToast } from '../common/Toast';
 import { copyText } from '../../utils/clipboard';
 
 export function OverviewView({ onOpenDepositForMember }) {
-  const { summary, activeMess, currentMonthKey, isManager } = useMess();
+  const { summary, activeMess, currentMonthKey, isManager, isPastMonth } = useMess();
   const [copied, setCopied] = useState(false);
 
   // Robustly extract metrics regardless of whether returned at root or under .financials
@@ -88,17 +88,22 @@ export function OverviewView({ onOpenDepositForMember }) {
           <p className="text-[10px] text-DynamicMuted">Deposit - (Meals × Rate) = Balance</p>
         </div>
         <div className="flex items-center gap-1.5">
-          {isManager && (
+          {/* {isManager && (
             <button
               type="button"
-              onClick={() => onOpenDepositForMember?.(null)}
-              className="tap-active px-2.5 py-1 theme-btn-primary sharp-xs text-xs font-semibold flex items-center gap-1 shadow-xs whitespace-nowrap"
-              title="Add or update a member's deposit balance"
+              disabled={isPastMonth}
+              onClick={isPastMonth ? undefined : () => onOpenDepositForMember?.(null)}
+              className={`px-2.5 py-1 sharp-xs text-xs font-semibold flex items-center gap-1 shadow-xs whitespace-nowrap ${
+                isPastMonth
+                  ? 'opacity-40 cursor-not-allowed surface-subtle text-DynamicMuted border border-slate-700/30'
+                  : 'tap-active theme-btn-primary'
+              }`}
+              title={isPastMonth ? 'Disabled: cannot modify past month deposit balance' : "Add or update a member's deposit balance"}
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Deposit</span>
             </button>
-          )}
+          )} */}
           <button
             type="button"
             onClick={handleCopySummary}
@@ -149,18 +154,16 @@ export function OverviewView({ onOpenDepositForMember }) {
                 {/* Right: Badge & Large Balance Number */}
                 <div className="text-right shrink-0">
                   <span
-                    className={`inline-block px-1.5 py-0.5 text-[9px] font-extrabold sharp-xs tracking-wider uppercase border ${
-                      isSurplus
-                        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                        : 'text-rose-400 bg-rose-500/10 border-rose-500/30'
-                    }`}
+                    className={`inline-block px-1.5 py-0.5 text-[9px] font-extrabold sharp-xs tracking-wider uppercase border ${isSurplus
+                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                      : 'text-rose-400 bg-rose-500/10 border-rose-500/30'
+                      }`}
                   >
                     {isSurplus ? 'REFUND / CREDIT' : 'DUE / OWED'}
                   </span>
                   <div
-                    className={`text-sm sm:text-base font-extrabold mt-0.5 ${
-                      isSurplus ? 'text-emerald-400' : 'text-rose-400'
-                    }`}
+                    className={`text-sm sm:text-base font-extrabold mt-0.5 ${isSurplus ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
                   >
                     {isSurplus ? `+৳${balance.toFixed(2)}` : `-৳${Math.abs(balance).toFixed(2)}`}
                   </div>
@@ -199,20 +202,24 @@ export function OverviewView({ onOpenDepositForMember }) {
               </div>
 
               {/* Manager Quick Action: Update Deposit Balance */}
-              {isManager && (
+              {/* {isManager && (
                 <div className="flex items-center justify-between pt-1 border-t border-slate-700/40">
                   <span className="text-[10px] text-DynamicMuted">Update member deposit:</span>
                   <button
                     type="button"
-                    onClick={() => onOpenDepositForMember?.(mem.memberId)}
-                    className="tap-active px-2 py-1 text-xs font-semibold theme-btn-primary sharp-xs flex items-center gap-1 shadow-xs"
-                    title="Update or add deposit balance for this member"
+                    disabled={isPastMonth}
+                    onClick={isPastMonth ? undefined : () => onOpenDepositForMember?.(mem.memberId)}
+                    className={`px-2 py-1 text-xs font-semibold sharp-xs flex items-center gap-1 shadow-xs ${isPastMonth
+                        ? 'opacity-40 cursor-not-allowed surface-subtle text-DynamicMuted border border-slate-700/30'
+                        : 'tap-active theme-btn-primary'
+                      }`}
+                    title={isPastMonth ? 'Disabled: cannot modify past month deposit balance' : 'Update or add deposit balance for this member'}
                   >
                     <Plus className="w-3 h-3" />
                     <span>Update Deposit</span>
                   </button>
                 </div>
-              )}
+              )} */}
             </div>
           );
         })}

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { LogOut, Copy, Check, BookOpen, AlertTriangle, Download } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useMess } from '../../context/MessContext';
 import { messService } from '../../services/messService';
+import { summaryService } from '../../services/summaryService';
 import { showToast } from '../common/Toast';
 import { copyText } from '../../utils/clipboard';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -26,18 +27,53 @@ const MONTH_NAMES = [
 
 export function SettingsModal({ isOpen, onClose, onOpenCreator, onOpenManual }) {
   const { currentUser, logout, refreshMe } = useAuth();
-  const { activeMess, isManager, currentMonthKey } = useMess();
+  const { activeMess, isManager, currentMonthKey, months } = useMess();
   const { themeConfig, setPreset, palettes } = useTheme();
 
   const [copied, setCopied] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
 
-  // Export Data State
-  const initialYear = currentMonthKey ? currentMonthKey.split('-')[0] : String(new Date().getFullYear());
-  const initialMonth = currentMonthKey ? currentMonthKey.split('-')[1] : String(new Date().getMonth() + 1).padStart(2, '0');
+  // Compute strictly recorded months in this mess's database records
+  const recordedMonthKeys = useMemo(() => {
+    const set = new Set();
+    (months || []).forEach((m) => {
+      if (m.monthKey) set.add(m.monthKey);
+    });
+    if (currentMonthKey) set.add(currentMonthKey);
+    return Array.from(set).sort().reverse();
+  }, [months, currentMonthKey]);
+
+  // Available Years: ONLY years the mess has records on
+  const availableYears = useMemo(() => {
+    const years = Array.from(new Set(recordedMonthKeys.map((k) => k.split('-')[0]))).sort().reverse();
+    return years.length > 0 ? years : [String(new Date().getFullYear())];
+  }, [recordedMonthKeys]);
+
+  const initialYear = availableYears[0] || String(new Date().getFullYear());
   const [exportYear, setExportYear] = useState(initialYear);
-  const [exportMonth, setExportMonth] = useState(initialMonth);
+
+  // Available Months for selected year: ONLY months the mess has records on
+  const availableMonthsForYear = useMemo(() => {
+    const monthNumbers = recordedMonthKeys
+      .filter((k) => k.startsWith(exportYear + '-'))
+      .map((k) => k.split('-')[1]);
+
+    const filtered = MONTH_NAMES.filter((m) => monthNumbers.includes(m.value));
+    return filtered;
+  }, [recordedMonthKeys, exportYear]);
+
+  const [exportMonth, setExportMonth] = useState(() => {
+    return availableMonthsForYear[0]?.value || '01';
+  });
+
+  // Re-sync exportMonth if current selection isn't in availableMonthsForYear
+  useEffect(() => {
+    if (availableMonthsForYear.length > 0 && !availableMonthsForYear.some((m) => m.value === exportMonth)) {
+      setExportMonth(availableMonthsForYear[0].value);
+    }
+  }, [availableMonthsForYear, exportMonth]);
+
   const [isExporting, setIsExporting] = useState(false);
 
   // Disband Mess Modal State
@@ -105,28 +141,144 @@ export function SettingsModal({ isOpen, onClose, onOpenCreator, onOpenManual }) 
     const monthKey = `${exportYear}-${exportMonth}`;
     setIsExporting(true);
     try {
-      const data = await messService.exportData(monthKey);
-      const jsonStr = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const [exportRes, summaryRes] = await Promise.all([
+        messService.exportData(monthKey),
+        summaryService.getSummary(monthKey).catch(() => null),
+      ]);
+
+      const messName = activeMess?.name || 'Mess';
+      const cleanMessName = messName.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_');
+
+      // Generate structured, clean human-readable text report
+      const line = '============================================================';
+      const subline = '------------------------------------------------------------';
+
+      let txt = `${line}\n`;
+      txt += `           MESS FINANCIAL & MEAL REPORT\n`;
+      txt += `${line}\n`;
+      txt += `Mess Name:      ${messName}\n`;
+      txt += `Report Month:   ${monthKey}\n`;
+      txt += `Generated On:   ${new Date().toLocaleString()}\n`;
+      txt += `Export Version: ${exportRes.exportVersion || '1.0'}\n`;
+      txt += `${line}\n\n`;
+
+      // 1. FINANCIAL KPI SUMMARY
+      const mealRate = Number(summaryRes?.mealRate ?? summaryRes?.financials?.mealRate ?? 0);
+      const totalMeals = Number(summaryRes?.totalMeals ?? summaryRes?.financials?.totalMeals ?? 0);
+      const totalApprovedBazar = Number(summaryRes?.totalApprovedBazar ?? summaryRes?.financials?.totalApprovedBazar ?? 0);
+      const totalDeposits = Number(summaryRes?.totalDeposits ?? summaryRes?.financials?.totalDeposits ?? 0);
+      const netSurplus = totalDeposits - totalApprovedBazar;
+
+      txt += `1. MONTH FINANCIAL OVERVIEW\n`;
+      txt += `${subline}\n`;
+      txt += `• Calculated Meal Rate:    ৳${mealRate.toFixed(2)} / meal\n`;
+      txt += `• Total Meals Consumed:    ${totalMeals.toFixed(1)} meals\n`;
+      txt += `• Total Approved Bazar:    ৳${totalApprovedBazar.toFixed(2)}\n`;
+      txt += `• Total Deposits Received: ৳${totalDeposits.toFixed(2)}\n`;
+      txt += `• Net Fund Treasury Cash:  ৳${netSurplus.toFixed(2)} (${netSurplus >= 0 ? 'Surplus' : 'Deficit'})\n\n`;
+
+      // 2. MEMBER BALANCES & SETTLEMENT
+      const memberSummaries = summaryRes?.memberSummaries || summaryRes?.membersSummary || [];
+      txt += `2. MEMBER ACCOUNTS & SETTLEMENT\n`;
+      txt += `${subline}\n`;
+      txt += `Name`.padEnd(20) + `Meals`.padEnd(10) + `Deposit`.padEnd(14) + `Meal Cost`.padEnd(14) + `Balance / Status\n`;
+      txt += `${subline}\n`;
+
+      memberSummaries.forEach((m) => {
+        const name = (m.name || 'Member').padEnd(20).substring(0, 20);
+        const meals = `${Number(m.totalMeals || 0).toFixed(1)}`.padEnd(10);
+        const dep = `৳${Number(m.totalDeposit || 0).toFixed(2)}`.padEnd(14);
+        const cost = `৳${Number(m.mealCost || 0).toFixed(2)}`.padEnd(14);
+        const bal = Number(m.balance || 0);
+        const status = bal >= 0 ? `+৳${bal.toFixed(2)} (Refund)` : `-৳${Math.abs(bal).toFixed(2)} (Due)`;
+        txt += `${name}${meals}${dep}${cost}${status}\n`;
+      });
+      if (memberSummaries.length === 0) {
+        txt += `No member summary calculations available.\n`;
+      }
+      txt += `\n`;
+
+      // 3. BAZAR ENTRIES
+      const bazarEntries = exportRes.bazarEntries || [];
+      txt += `3. BAZAR EXPENSES LOG (${bazarEntries.length} entries)\n`;
+      txt += `${subline}\n`;
+      txt += `Date`.padEnd(12) + `Category`.padEnd(16) + `Amount`.padEnd(12) + `Buyer`.padEnd(18) + `Status\n`;
+      txt += `${subline}\n`;
+      bazarEntries.forEach((b) => {
+        const d = (b.date ? b.date.split('T')[0] : '').padEnd(12);
+        const cat = (b.category || 'Bazar').padEnd(16).substring(0, 16);
+        const amt = `৳${Number(b.amount || 0).toFixed(2)}`.padEnd(12);
+        const buyer = (b.member?.user?.name || b.memberName || 'Member').padEnd(18).substring(0, 18);
+        const status = b.status || 'APPROVED';
+        txt += `${d}${cat}${amt}${buyer}${status}\n`;
+        if (b.notes) {
+          txt += `   └ Notes: ${b.notes}\n`;
+        }
+      });
+      if (bazarEntries.length === 0) {
+        txt += `No bazar entries recorded for this month.\n`;
+      }
+      txt += `\n`;
+
+      // 4. DEPOSIT RECORDS
+      const deposits = exportRes.deposits || [];
+      txt += `4. DEPOSIT RECORDS LOG (${deposits.length} entries)\n`;
+      txt += `${subline}\n`;
+      txt += `Date`.padEnd(12) + `Member Name`.padEnd(24) + `Amount`.padEnd(14) + `Notes\n`;
+      txt += `${subline}\n`;
+      deposits.forEach((dep) => {
+        const d = (dep.date ? dep.date.split('T')[0] : '').padEnd(12);
+        const mem = (dep.member?.user?.name || dep.memberName || 'Member').padEnd(24).substring(0, 24);
+        const amt = `৳${Number(dep.amount || 0).toFixed(2)}`.padEnd(14);
+        const notes = dep.notes || '-';
+        txt += `${d}${mem}${amt}${notes}\n`;
+      });
+      if (deposits.length === 0) {
+        txt += `No deposits recorded for this month.\n`;
+      }
+      txt += `\n`;
+
+      // 5. DAILY MEALS LOG
+      const dailyMeals = exportRes.dailyMeals || [];
+      txt += `5. DAILY MEALS BREAKDOWN (${dailyMeals.length} records)\n`;
+      txt += `${subline}\n`;
+      txt += `Date`.padEnd(12) + `Member Name`.padEnd(22) + `Lunch`.padEnd(8) + `Dinner`.padEnd(8) + `Total`.padEnd(8) + `Break\n`;
+      txt += `${subline}\n`;
+      dailyMeals.forEach((dm) => {
+        const d = (dm.date ? dm.date.split('T')[0] : '').padEnd(12);
+        const mem = (dm.member?.user?.name || dm.memberName || 'Member').padEnd(22).substring(0, 22);
+        const lunch = `${Number(dm.lunch || 0).toFixed(1)}`.padEnd(8);
+        const dinner = `${Number(dm.dinner || 0).toFixed(1)}`.padEnd(8);
+        const total = `${(Number(dm.lunch || 0) + Number(dm.dinner || 0)).toFixed(1)}`.padEnd(8);
+        const leave = dm.isLeave ? 'ON BREAK' : 'No';
+        txt += `${d}${mem}${lunch}${dinner}${total}${leave}\n`;
+      });
+      if (dailyMeals.length === 0) {
+        txt += `No daily meals recorded for this month.\n`;
+      }
+      txt += `\n`;
+
+      txt += `${line}\n`;
+      txt += `          Report generated by Super Manager App\n`;
+      txt += `              Creator: FARDIN ABU UBAID\n`;
+      txt += `${line}\n`;
+
+      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const cleanMessName = activeMess?.name ? activeMess.name.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_') : 'mess';
-      link.download = `mess-export-${cleanMessName}-${monthKey}.json`;
+      link.download = `mess-report-${cleanMessName}-${monthKey}.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast(`Exported mess data for ${monthKey} successfully!`, 'success');
+      showToast(`Exported report for ${monthKey} as TXT!`, 'success');
     } catch (err) {
       showToast(err.message || `No export data found for ${monthKey}`, 'error');
     } finally {
       setIsExporting(false);
     }
   };
-
-  const currentYr = new Date().getFullYear();
-  const availableYears = [currentYr - 2, currentYr - 1, currentYr, currentYr + 1, currentYr + 2];
 
   return (
     <>
@@ -239,11 +391,15 @@ export function SettingsModal({ isOpen, onClose, onOpenCreator, onOpenManual }) 
                     onChange={(e) => setExportMonth(e.target.value)}
                     className="w-full px-2 py-1.5 text-xs surface-input sharp-xs font-semibold"
                   >
-                    {MONTH_NAMES.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
+                    {availableMonthsForYear.length > 0 ? (
+                      availableMonthsForYear.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">No records</option>
+                    )}
                   </select>
                 </div>
 
@@ -268,11 +424,11 @@ export function SettingsModal({ isOpen, onClose, onOpenCreator, onOpenManual }) 
               <button
                 type="button"
                 onClick={handleExportData}
-                disabled={isExporting}
+                disabled={isExporting || !exportMonth}
                 className="tap-active w-full py-1.5 theme-btn-primary sharp-xs text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>{isExporting ? 'Exporting...' : `Export Data (${exportYear}-${exportMonth})`}</span>
+                <span>{isExporting ? 'Exporting...' : `Export TXT Report (${exportYear}-${exportMonth})`}</span>
               </button>
             </div>
           )}
@@ -314,11 +470,10 @@ export function SettingsModal({ isOpen, onClose, onOpenCreator, onOpenManual }) 
                     key={key}
                     type="button"
                     onClick={() => setPreset(key)}
-                    className={`tap-active p-1.5 sharp-xs flex items-center gap-1.5 text-[10px] font-bold border transition ${
-                      isSelected
+                    className={`tap-active p-1.5 sharp-xs flex items-center gap-1.5 text-[10px] font-bold border transition ${isSelected
                         ? 'border-white bg-white/10 text-DynamicMain'
                         : 'surface-subtle border-slate-700/50 text-DynamicMuted hover:border-slate-500'
-                    }`}
+                      }`}
                   >
                     <span
                       className="w-2.5 h-2.5 rounded-full shrink-0"

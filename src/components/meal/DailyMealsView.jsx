@@ -7,7 +7,7 @@ import { showToast } from '../common/Toast';
 import { ConfirmModal } from '../common/ConfirmModal';
 
 export function DailyMealsView({ onOpenLeaveBreak }) {
-  const { currentMonthKey, members, isManager, activeMemberId, refreshAllMessData } = useMess();
+  const { currentMonthKey, members, isManager, activeMemberId, refreshAllMessData, dataVersion, isPastMonth } = useMess();
   const { currentUser } = useAuth();
 
   const getTodayDateString = () => {
@@ -24,6 +24,16 @@ export function DailyMealsView({ onOpenLeaveBreak }) {
   const [mealsData, setMealsData] = useState([]);
   const [approvedLeaves, setApprovedLeaves] = useState([]);
   const carouselRef = useRef(null);
+
+  // Sync selectedDate when currentMonthKey changes
+  useEffect(() => {
+    const today = getTodayDateString();
+    if (today.startsWith(currentMonthKey)) {
+      setSelectedDate(today);
+    } else {
+      setSelectedDate(`${currentMonthKey}-01`);
+    }
+  }, [currentMonthKey]);
 
   // Resume Meals Confirm Modal State
   const [resumingMember, setResumingMember] = useState(null);
@@ -64,7 +74,7 @@ export function DailyMealsView({ onOpenLeaveBreak }) {
 
   useEffect(() => {
     fetchMeals();
-  }, [fetchMeals]);
+  }, [fetchMeals, dataVersion]);
 
   // Jump to Today
   const handleJumpToday = () => {
@@ -111,6 +121,11 @@ export function DailyMealsView({ onOpenLeaveBreak }) {
   const handleStepMeal = async (memberId, mealType, step) => {
     if (!isManager) {
       showToast('Only the current mess manager can record daily meals', 'error');
+      return;
+    }
+
+    if (isPastMonth) {
+      showToast('This is a past archived month. Daily meals cannot be modified.', 'warning');
       return;
     }
 
@@ -212,17 +227,28 @@ export function DailyMealsView({ onOpenLeaveBreak }) {
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={onOpenLeaveBreak}
-              className="tap-active px-2 py-1 surface-subtle sharp-xs text-xs font-semibold text-DynamicMain hover:border-indigo-500 transition flex items-center gap-1 whitespace-nowrap"
-              title="Temporary Meal Break (Pause Meals)"
+              disabled={isPastMonth}
+              onClick={isPastMonth ? undefined : onOpenLeaveBreak}
+              className={`px-2 py-1 sharp-xs text-xs font-semibold transition flex items-center gap-1 whitespace-nowrap ${
+                isPastMonth
+                  ? 'opacity-40 cursor-not-allowed surface-subtle text-DynamicMuted border border-slate-700/30'
+                  : 'tap-active surface-subtle text-DynamicMain hover:border-indigo-500'
+              }`}
+              title={isPastMonth ? 'Disabled: viewing a past archived month' : 'Temporary Meal Break (Pause Meals)'}
             >
-              <PauseCircle className="w-3.5 h-3.5 text-amber-400" />
+              <PauseCircle className={`w-3.5 h-3.5 ${isPastMonth ? 'text-slate-500' : 'text-amber-400'}`} />
               <span>Meal Break</span>
             </button>
             <button
               type="button"
-              onClick={handleJumpToday}
-              className="tap-active px-2 py-1 theme-bg-soft border sharp-xs text-xs font-bold transition whitespace-nowrap"
+              disabled={isPastMonth}
+              onClick={isPastMonth ? undefined : handleJumpToday}
+              className={`px-2 py-1 sharp-xs text-xs font-bold transition whitespace-nowrap ${
+                isPastMonth
+                  ? 'opacity-40 cursor-not-allowed surface-subtle text-DynamicMuted border border-slate-700/30'
+                  : 'tap-active theme-bg-soft border text-DynamicMain hover:border-indigo-400'
+              }`}
+              title={isPastMonth ? 'Disabled: viewing a past archived month' : 'Jump to Today'}
             >
               Jump Today
             </button>
@@ -364,14 +390,14 @@ export function DailyMealsView({ onOpenLeaveBreak }) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
-                        disabled={!isManager || isLeave || lunchVal <= 0}
+                        disabled={!isManager || isPastMonth || isLeave || lunchVal <= 0}
                         onClick={() => handleStepMeal(member.id, 'lunch', -0.5)}
                         className={`w-6 h-6 sharp-xs surface-card border border-slate-700 font-extrabold text-xs flex items-center justify-center transition ${
-                          isManager && !isLeave && lunchVal > 0
+                          isManager && !isPastMonth && !isLeave && lunchVal > 0
                             ? 'tap-active text-DynamicMain hover:bg-slate-700'
                             : 'opacity-30 cursor-not-allowed text-DynamicMuted'
                         }`}
-                        title={isLeave ? 'Disabled (On Break)' : 'Subtract 0.5'}
+                        title={isPastMonth ? 'Disabled: past month' : isLeave ? 'Disabled (On Break)' : 'Subtract 0.5'}
                       >
                         <Minus className="w-3 h-3" />
                       </button>
@@ -382,14 +408,14 @@ export function DailyMealsView({ onOpenLeaveBreak }) {
 
                       <button
                         type="button"
-                        disabled={!isManager || isLeave}
+                        disabled={!isManager || isPastMonth || isLeave}
                         onClick={() => handleStepMeal(member.id, 'lunch', 0.5)}
                         className={`w-6 h-6 sharp-xs font-extrabold text-xs flex items-center justify-center transition ${
-                          isManager && !isLeave
+                          isManager && !isPastMonth && !isLeave
                             ? 'tap-active theme-btn-primary hover:brightness-110 shadow-xs'
                             : 'opacity-30 cursor-not-allowed surface-card border border-slate-700 text-DynamicMuted'
                         }`}
-                        title={isLeave ? 'Disabled (On Break)' : 'Add 0.5'}
+                        title={isPastMonth ? 'Disabled: past month' : isLeave ? 'Disabled (On Break)' : 'Add 0.5'}
                       >
                         <Plus className="w-3 h-3" />
                       </button>
@@ -404,14 +430,14 @@ export function DailyMealsView({ onOpenLeaveBreak }) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
-                        disabled={!isManager || isLeave || dinnerVal <= 0}
+                        disabled={!isManager || isPastMonth || isLeave || dinnerVal <= 0}
                         onClick={() => handleStepMeal(member.id, 'dinner', -0.5)}
                         className={`w-6 h-6 sharp-xs surface-card border border-slate-700 font-extrabold text-xs flex items-center justify-center transition ${
-                          isManager && !isLeave && dinnerVal > 0
+                          isManager && !isPastMonth && !isLeave && dinnerVal > 0
                             ? 'tap-active text-DynamicMain hover:bg-slate-700'
                             : 'opacity-30 cursor-not-allowed text-DynamicMuted'
                         }`}
-                        title={isLeave ? 'Disabled (On Break)' : 'Subtract 0.5'}
+                        title={isPastMonth ? 'Disabled: past month' : isLeave ? 'Disabled (On Break)' : 'Subtract 0.5'}
                       >
                         <Minus className="w-3 h-3" />
                       </button>
@@ -422,14 +448,14 @@ export function DailyMealsView({ onOpenLeaveBreak }) {
 
                       <button
                         type="button"
-                        disabled={!isManager || isLeave}
+                        disabled={!isManager || isPastMonth || isLeave}
                         onClick={() => handleStepMeal(member.id, 'dinner', 0.5)}
                         className={`w-6 h-6 sharp-xs font-extrabold text-xs flex items-center justify-center transition ${
-                          isManager && !isLeave
+                          isManager && !isPastMonth && !isLeave
                             ? 'tap-active theme-btn-primary hover:brightness-110 shadow-xs'
                             : 'opacity-30 cursor-not-allowed surface-card border border-slate-700 text-DynamicMuted'
                         }`}
-                        title={isLeave ? 'Disabled (On Break)' : 'Add 0.5'}
+                        title={isPastMonth ? 'Disabled: past month' : isLeave ? 'Disabled (On Break)' : 'Add 0.5'}
                       >
                         <Plus className="w-3 h-3" />
                       </button>

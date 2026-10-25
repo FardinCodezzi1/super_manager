@@ -17,6 +17,7 @@ import { AuthScreen } from './components/auth/AuthScreen';
 // Meal Manager Components
 import { MealOnboarding } from './components/meal/MealOnboarding';
 import { ActionStrip } from './components/meal/ActionStrip';
+import { MonthSwitcher } from './components/meal/MonthSwitcher';
 import { PendingApprovalsBanner } from './components/meal/PendingApprovalsBanner';
 import { DailyMealsView } from './components/meal/DailyMealsView';
 import { OverviewView } from './components/meal/OverviewView';
@@ -246,6 +247,9 @@ function AppContent() {
                   onOpenAddBazar={() => setIsAddBazarOpen(true)}
                   onOpenRotationModal={() => setIsRotationOpen(true)}
                 />
+
+                {/* Month Switching System */}
+                <MonthSwitcher />
 
                 {/* Manager Approvals Alert Banner */}
                 <PendingApprovalsBanner />

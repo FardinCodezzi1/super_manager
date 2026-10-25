@@ -7,7 +7,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { EditBazarModal } from './EditBazarModal';
 
 export function BazarView({ onOpenAddBazar }) {
-  const { currentMonthKey, members, isManager, activeMemberId, refreshAllMessData } = useMess();
+  const { currentMonthKey, members, isManager, activeMemberId, refreshAllMessData, dataVersion, isPastMonth } = useMess();
 
   const [bazarList, setBazarList] = useState([]);
   const [filterShopper, setFilterShopper] = useState('all');
@@ -31,7 +31,7 @@ export function BazarView({ onOpenAddBazar }) {
 
   useEffect(() => {
     fetchBazar();
-  }, [fetchBazar]);
+  }, [fetchBazar, dataVersion]);
 
   const approvedTotal = useMemo(() => {
     return bazarList
@@ -98,8 +98,14 @@ export function BazarView({ onOpenAddBazar }) {
           </div>
           <button
             type="button"
-            onClick={onOpenAddBazar}
-            className="tap-active px-2.5 py-1.5 theme-btn-primary sharp-xs text-xs font-semibold flex items-center gap-1 shadow-xs transition whitespace-nowrap"
+            disabled={isPastMonth}
+            onClick={isPastMonth ? undefined : onOpenAddBazar}
+            className={`px-2.5 py-1.5 sharp-xs text-xs font-semibold flex items-center gap-1 shadow-xs transition whitespace-nowrap ${
+              isPastMonth
+                ? 'opacity-40 cursor-not-allowed surface-subtle text-DynamicMuted border border-slate-700/30'
+                : 'tap-active theme-btn-primary'
+            }`}
+            title={isPastMonth ? 'Disabled: cannot add bazar for a past archived month' : 'Add Bazar Record'}
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Bazar</span>

@@ -4,7 +4,7 @@ import { useMess } from '../../context/MessContext';
 import { showToast } from '../common/Toast';
 
 export function ActionStrip({ onOpenAddBazar, onOpenRotationModal }) {
-  const { activeMess, members } = useMess();
+  const { activeMess, members, isPastMonth } = useMess();
   const [copied, setCopied] = useState(false);
 
   const activeCount = members.filter((m) => m.status === 'ACTIVE').length;
@@ -31,25 +31,33 @@ export function ActionStrip({ onOpenAddBazar, onOpenRotationModal }) {
     <div className="surface-card flex flex-wrap items-center justify-between gap-2 py-2 px-2.5">
       {/* Left Action Buttons */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Bazar Button (Fixed: No duplicate +) */}
+        {/* Bazar Button (Disabled for past months) */}
         <button
           type="button"
-          onClick={onOpenAddBazar}
-          className="tap-active px-3 py-1.5 theme-btn-primary sharp-xs text-xs font-bold flex items-center gap-1 shadow-xs transition whitespace-nowrap"
-          title="Add Bazar Record"
+          disabled={isPastMonth}
+          onClick={isPastMonth ? undefined : onOpenAddBazar}
+          className={`sharp-xs text-xs font-bold flex items-center gap-1 shadow-xs transition whitespace-nowrap px-3 py-1.5 ${isPastMonth
+              ? 'opacity-40 cursor-not-allowed surface-subtle text-DynamicMuted border border-slate-700/30'
+              : 'tap-active theme-btn-primary'
+            }`}
+          title={isPastMonth ? 'Disabled: cannot add bazar for a past archived month' : 'Add Bazar Record'}
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>Bazar</span>
         </button>
 
-        {/* Duty / Rotation Shortcut Button */}
+        {/* Duty / Rotation Shortcut Button (Disabled for past months) */}
         <button
           type="button"
-          onClick={onOpenRotationModal}
-          className="tap-active px-2.5 py-1.5 theme-bg-soft border sharp-xs text-xs font-bold flex items-center gap-1.5 text-DynamicMain whitespace-nowrap"
-          title="Manager Duty & Rotation Schedule"
+          disabled={isPastMonth}
+          onClick={isPastMonth ? undefined : onOpenRotationModal}
+          className={`sharp-xs text-xs font-bold flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 border transition ${isPastMonth
+              ? 'opacity-40 cursor-not-allowed surface-subtle text-DynamicMuted border-slate-700/30'
+              : 'tap-active theme-bg-soft text-DynamicMain hover:border-indigo-400'
+            }`}
+          title={isPastMonth ? 'Disabled: manager duty rotation only applies to active month' : 'Manager Duty & Rotation Schedule'}
         >
-          <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
+          <ShieldCheck className={`w-3.5 h-3.5 ${isPastMonth ? 'text-slate-500' : 'text-indigo-400'}`} />
           <span>Duty</span>
           {activeMess?.rotationType && (
             <span className="px-1 py-0.2 text-[8px] uppercase tracking-wider font-extrabold surface-subtle border border-indigo-400/30 text-indigo-300 sharp-xs">
@@ -83,16 +91,16 @@ export function ActionStrip({ onOpenAddBazar, onOpenRotationModal }) {
             )}
           </button>
 
-          <span className="text-slate-600">|</span>
+          {/* <span className="text-slate-600">|</span> */}
 
-          <button
+          {/* <button
             type="button"
             onClick={handleShareWhatsApp}
             className="tap-active text-emerald-400 hover:text-emerald-300 p-0.5"
             title="Share invite via WhatsApp"
           >
             <Share2 className="w-3 h-3" />
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

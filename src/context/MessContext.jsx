@@ -12,10 +12,12 @@ export function MessProvider({ children }) {
   const activeMess = activeMembership?.mess || null;
   const isManager = activeMembership?.role === 'MANAGER';
 
-  const [currentMonthKey, setCurrentMonthKey] = useState(() => {
+  const actualCurrentMonthKey = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
+  })();
+
+  const [currentMonthKey, setCurrentMonthKey] = useState(actualCurrentMonthKey);
 
   const [members, setMembers] = useState([]);
   const [months, setMonths] = useState([]);
@@ -23,6 +25,11 @@ export function MessProvider({ children }) {
   const [pendingBazar, setPendingBazar] = useState([]);
   const [pendingLeaves, setPendingLeaves] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0);
+
+  const isPastMonth = currentMonthKey < actualCurrentMonthKey;
+  const isCurrentMonth = currentMonthKey === actualCurrentMonthKey;
+  const isFutureMonth = currentMonthKey > actualCurrentMonthKey;
 
   const refreshAllMessData = useCallback(async () => {
     if (!activeMess) {
@@ -60,6 +67,9 @@ export function MessProvider({ children }) {
         setPendingBazar([]);
         setPendingLeaves([]);
       }
+
+      // Increment dataVersion to notify all child views (DailyMealsView, BazarView, DepositsView)
+      setDataVersion((v) => v + 1);
     } finally {
       setIsLoading(false);
     }
@@ -77,6 +87,10 @@ export function MessProvider({ children }) {
         activeMemberId: activeMembership?.id,
         currentMonthKey,
         setCurrentMonthKey,
+        actualCurrentMonthKey,
+        isPastMonth,
+        isCurrentMonth,
+        isFutureMonth,
         members,
         months,
         summary,
@@ -85,6 +99,7 @@ export function MessProvider({ children }) {
         setPendingBazar,
         setPendingLeaves,
         isLoading,
+        dataVersion,
         refreshAllMessData,
       }}
     >

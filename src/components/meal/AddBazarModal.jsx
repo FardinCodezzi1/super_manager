@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Trash } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { useMess } from '../../context/MessContext';
 import { useAuth } from '../../context/AuthContext';
@@ -102,18 +102,16 @@ export function AddBazarModal({ isOpen, onClose, onSuccess }) {
           <button
             type="button"
             onClick={() => setMode('quick')}
-            className={`tap-active py-1 text-xs font-bold sharp-xs text-center transition whitespace-nowrap ${
-              mode === 'quick' ? 'theme-btn-primary' : 'text-DynamicMuted hover:text-DynamicMain'
-            }`}
+            className={`tap-active py-1 text-xs font-bold sharp-xs text-center transition whitespace-nowrap ${mode === 'quick' ? 'theme-btn-primary' : 'text-DynamicMuted hover:text-DynamicMain'
+              }`}
           >
             Mode 1: Quick Total
           </button>
           <button
             type="button"
             onClick={() => setMode('checklist')}
-            className={`tap-active py-1 text-xs font-bold sharp-xs text-center transition whitespace-nowrap ${
-              mode === 'checklist' ? 'theme-btn-primary' : 'text-DynamicMuted hover:text-DynamicMain'
-            }`}
+            className={`tap-active py-1 text-xs font-bold sharp-xs text-center transition whitespace-nowrap ${mode === 'checklist' ? 'theme-btn-primary' : 'text-DynamicMuted hover:text-DynamicMain'
+              }`}
           >
             Mode 2: Checklist
           </button>
@@ -131,11 +129,10 @@ export function AddBazarModal({ isOpen, onClose, onSuccess }) {
               </p>
             </div>
             <span
-              className={`px-1.5 py-0.5 text-[9px] font-bold sharp-xs uppercase ${
-                isManager
-                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30'
-                  : 'text-amber-400 bg-amber-500/10 border border-amber-500/30'
-              }`}
+              className={`px-1.5 py-0.5 text-[9px] font-bold sharp-xs uppercase ${isManager
+                ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30'
+                : 'text-amber-400 bg-amber-500/10 border border-amber-500/30'
+                }`}
             >
               {isManager ? 'Instant Auto-Approval' : 'Requires Approval'}
             </span>
@@ -198,7 +195,7 @@ export function AddBazarModal({ isOpen, onClose, onSuccess }) {
 
               <div className="surface-subtle p-2 sharp-xs space-y-1.5 border border-slate-700/40">
                 <span className="block text-[10px] font-bold text-DynamicSec uppercase">
-                  Add Grocery Item
+                  Add Grocery Item <span className="text-red-500 text-[9px]">(quantity doesn't multiply the price)</span>
                 </span>
                 <div className="grid grid-cols-5 gap-1">
                   <input
@@ -206,22 +203,22 @@ export function AddBazarModal({ isOpen, onClose, onSuccess }) {
                     value={itemName}
                     onChange={(e) => setItemName(e.target.value)}
                     placeholder="Item (e.g. Rice)"
-                    className="col-span-2 px-1.5 py-1 text-xs surface-input sharp-xs"
+                    className="col-span-2 px-1.5 py-1 text-xs surface-card sharp-xs focus:outline-none"
                   />
                   <input
                     type="text"
                     value={itemQty}
                     onChange={(e) => setItemQty(e.target.value)}
-                    placeholder="Qty (5kg)"
-                    className="col-span-1 px-1.5 py-1 text-xs surface-input sharp-xs"
+                    placeholder="Qty"
+                    className="col-span-1 px-1.5 py-1 text-xs surface-card sharp-xs focus:outline-none"
                   />
                   <input
                     type="number"
                     step="0.01"
                     value={itemPrice}
                     onChange={(e) => setItemPrice(e.target.value)}
-                    placeholder="৳ Price"
-                    className="col-span-1 px-1.5 py-1 text-xs surface-input sharp-xs font-bold"
+                    placeholder="৳Price"
+                    className="col-span-1 px-1.5 py-1 text-xs surface-card sharp-xs font-bold focus:outline-none"
                   />
                   <button
                     type="button"
@@ -248,7 +245,7 @@ export function AddBazarModal({ isOpen, onClose, onSuccess }) {
                         onClick={() => handleRemoveChecklistItem(idx)}
                         className="text-rose-400 font-bold hover:text-rose-300 px-1"
                       >
-                        &times;
+                        <Trash className="w-3 h-3 mb-0.5" />
                       </button>
                     </div>
                   </div>
