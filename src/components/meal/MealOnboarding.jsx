@@ -96,7 +96,7 @@ export function MealOnboarding() {
             value={newMessName}
             onChange={(e) => setNewMessName(e.target.value)}
             placeholder="e.g. Green Valley Mess"
-            className="w-full px-2.5 py-1.5 text-xs surface-input sharp-xs"
+            className="w-full px-2.5 py-1.5 text-xs surface-card sharp-xs focus:outline-none"
           />
 
           <div>
@@ -107,22 +107,20 @@ export function MealOnboarding() {
               <button
                 type="button"
                 onClick={() => setRotationType('MONTHLY')}
-                className={`tap-active py-1 text-[11px] font-bold sharp-xs text-center border transition ${
-                  rotationType === 'MONTHLY'
-                    ? 'theme-btn-primary'
-                    : 'surface-card border-slate-700 text-DynamicSec'
-                }`}
+                className={`tap-active py-1 text-[11px] font-bold sharp-xs text-center border transition ${rotationType === 'MONTHLY'
+                  ? 'theme-btn-primary'
+                  : 'surface-card border-slate-700 text-DynamicSec'
+                  }`}
               >
                 Monthly
               </button>
               <button
                 type="button"
                 onClick={() => setRotationType('WEEKLY')}
-                className={`tap-active py-1 text-[11px] font-bold sharp-xs text-center border transition ${
-                  rotationType === 'WEEKLY'
-                    ? 'theme-btn-primary'
-                    : 'surface-card border-slate-700 text-DynamicSec'
-                }`}
+                className={`tap-active py-1 text-[11px] font-bold sharp-xs text-center border transition ${rotationType === 'WEEKLY'
+                  ? 'theme-btn-primary'
+                  : 'surface-card border-slate-700 text-DynamicSec'
+                  }`}
               >
                 Weekly
               </button>
@@ -153,12 +151,12 @@ export function MealOnboarding() {
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value)}
             placeholder="e.g. MESS-TKQF5"
-            className="w-full px-2.5 py-1.5 text-xs surface-input sharp-xs uppercase"
+            className="w-full px-2.5 py-1.5 text-xs surface-card sharp-xs focus:outline-none"
           />
           <button
             type="submit"
             disabled={joining}
-            className="tap-active w-full py-1.5 surface-subtle border text-DynamicMain hover:border-indigo-500 sharp-xs text-xs font-semibold whitespace-nowrap disabled:opacity-50"
+            className="tap-active w-full py-1.5 theme-btn-primary sharp-xs text-xs font-semibold whitespace-nowrap disabled:opacity-50"
           >
             {joining ? 'Joining...' : 'Join Mess'}
           </button>
